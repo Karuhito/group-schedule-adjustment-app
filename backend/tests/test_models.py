@@ -1,7 +1,7 @@
 import uuid
 import pytest
 from datetime import datetime
-from app.models.models import User, Group, GroupMember, Schedule
+from app.models.models import User, Group, GroupMember
 
 
 @pytest.mark.asyncio
