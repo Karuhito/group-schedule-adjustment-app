@@ -36,7 +36,7 @@ def _create_jwt(user_id: str) -> str:
 
 @router.get("/discord")
 async def discord_login():
-    return RedirectResponse(url=_build_discord_oauth_url())
+    return RedirectResponse(url=_build_discord_oauth_url(), status_code=302)
 
 
 @router.get("/discord/callback")
@@ -97,7 +97,7 @@ async def discord_callback(code: str, db: AsyncSession = Depends(get_db)):
     token = _create_jwt(str(user.id))
     is_secure = settings.app_env == "production"
 
-    response = RedirectResponse(url=f"{settings.frontend_url}/home")
+    response = RedirectResponse(url=f"{settings.frontend_url}/home", status_code=302)
     response.set_cookie(
         key="access_token",
         value=token,

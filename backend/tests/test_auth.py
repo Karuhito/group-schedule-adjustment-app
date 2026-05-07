@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 
@@ -27,11 +27,11 @@ async def test_discord_login_redirect(client):
 @pytest.mark.asyncio
 async def test_discord_callback_creates_user(client, db_session):
     """/auth/discord/callback で新規ユーザーが作成され、Cookie がセットされること"""
-    mock_token_response = AsyncMock()
+    mock_token_response = MagicMock()
     mock_token_response.status_code = 200
     mock_token_response.json.return_value = {"access_token": "discord_access_token"}
 
-    mock_user_response = AsyncMock()
+    mock_user_response = MagicMock()
     mock_user_response.status_code = 200
     mock_user_response.json.return_value = {
         "id": "999888777",
@@ -62,11 +62,11 @@ async def test_discord_callback_upserts_existing_user(client, db_session):
     db_session.add(existing_user)
     await db_session.commit()
 
-    mock_token_response = AsyncMock()
+    mock_token_response = MagicMock()
     mock_token_response.status_code = 200
     mock_token_response.json.return_value = {"access_token": "discord_access_token"}
 
-    mock_user_response = AsyncMock()
+    mock_user_response = MagicMock()
     mock_user_response.status_code = 200
     mock_user_response.json.return_value = {
         "id": "111222333",
