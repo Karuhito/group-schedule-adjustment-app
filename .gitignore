@@ -18,8 +18,9 @@ env/
 
 # 環境変数（機密情報）
 backend/.env
+backend/.env.*
 frontend/.env
-frontend/.env.local
+frontend/.env.*
 
 # pytest / テストキャッシュ
 .pytest_cache/
@@ -55,3 +56,5 @@ Thumbs.db
 # Alembic（マイグレーションファイルは含める、__pycache__ は除外）
 backend/alembic/__pycache__/
 backend/alembic/versions/__pycache__/
+
+.claude/settings.local.json
