@@ -72,3 +72,24 @@ async def test_list_groups_only_mine(client, test_user, other_user):
     data = response.json()
     assert len(data) == 1
     assert data[0]["name"] == "オーナーのグループ"
+
+
+@pytest.mark.asyncio
+async def test_preview_group(client, test_user):
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    create_r = await client.post("/groups", json={"name": "プレビューテスト"})
+    invite_code = create_r.json()["invite_code"]
+
+    response = await client.get(f"/groups/by-code/{invite_code}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == "プレビューテスト"
+    assert data["member_count"] == 1
+    assert "invite_code" not in data
+
+
+@pytest.mark.asyncio
+async def test_preview_group_not_found(client, test_user):
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    response = await client.get("/groups/by-code/notexist")
+    assert response.status_code == 404
