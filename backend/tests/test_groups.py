@@ -217,3 +217,59 @@ async def test_delete_group_not_found(client, test_user):
     client.cookies.set("access_token", _make_jwt(str(test_user.id)))
     response = await client.delete(f"/groups/{uuid.uuid4()}")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_remove_member(client, test_user, other_user):
+    # グループ作成 & other_user が参加
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    create_r = await client.post("/groups", json={"name": "追い出しテスト"})
+    group_id = create_r.json()["id"]
+    invite_code = create_r.json()["invite_code"]
+
+    client.cookies.set("access_token", _make_jwt(str(other_user.id)))
+    await client.post(f"/groups/by-code/{invite_code}/join")
+
+    # オーナーが other_user を追い出す
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    response = await client.delete(f"/groups/{group_id}/members/{other_user.id}")
+    assert response.status_code == 204
+
+    # メンバーが1人（オーナーのみ）になっていること
+    members_r = await client.get(f"/groups/{group_id}/members")
+    assert len(members_r.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_remove_self_as_owner(client, test_user):
+    """オーナーが自分自身を追い出そうとすると 400 になること"""
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    create_r = await client.post("/groups", json={"name": "テスト"})
+    group_id = create_r.json()["id"]
+
+    response = await client.delete(f"/groups/{group_id}/members/{test_user.id}")
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_remove_member_not_owner(client, test_user, other_user):
+    """オーナー以外がメンバーを追い出そうとすると 403 になること"""
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    create_r = await client.post("/groups", json={"name": "テスト"})
+    group_id = create_r.json()["id"]
+    invite_code = create_r.json()["invite_code"]
+
+    client.cookies.set("access_token", _make_jwt(str(other_user.id)))
+    await client.post(f"/groups/by-code/{invite_code}/join")
+
+    # other_user がオーナー（test_user）を追い出そうとする
+    response = await client.delete(f"/groups/{group_id}/members/{test_user.id}")
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_remove_member_group_not_found(client, test_user, other_user):
+    import uuid
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    response = await client.delete(f"/groups/{uuid.uuid4()}/members/{other_user.id}")
+    assert response.status_code == 404
