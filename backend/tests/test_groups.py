@@ -136,3 +136,47 @@ async def test_join_group_not_found(client, test_user):
     client.cookies.set("access_token", _make_jwt(str(test_user.id)))
     response = await client.post("/groups/by-code/notexist/join")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_list_members(client, test_user, other_user):
+    # グループを作成し other_user が参加
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    create_r = await client.post("/groups", json={"name": "メンバーテスト"})
+    group_id = create_r.json()["id"]
+    invite_code = create_r.json()["invite_code"]
+
+    client.cookies.set("access_token", _make_jwt(str(other_user.id)))
+    await client.post(f"/groups/by-code/{invite_code}/join")
+
+    # test_user としてメンバー一覧を取得
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    response = await client.get(f"/groups/{group_id}/members")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    owner = next(m for m in data if m["is_owner"])
+    assert owner["username"] == "owner"
+    non_owner = next(m for m in data if not m["is_owner"])
+    assert non_owner["username"] == "member"
+
+
+@pytest.mark.asyncio
+async def test_list_members_not_member(client, test_user, other_user):
+    """非メンバーがメンバー一覧を取得しようとすると 403 になること"""
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    create_r = await client.post("/groups", json={"name": "テスト"})
+    group_id = create_r.json()["id"]
+
+    # other_user（非メンバー）はアクセス不可
+    client.cookies.set("access_token", _make_jwt(str(other_user.id)))
+    response = await client.get(f"/groups/{group_id}/members")
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_list_members_group_not_found(client, test_user):
+    import uuid
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    response = await client.get(f"/groups/{uuid.uuid4()}/members")
+    assert response.status_code == 404
