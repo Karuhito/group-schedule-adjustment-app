@@ -55,7 +55,23 @@ async def list_groups(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[GroupResponse]:
-    raise HTTPException(status_code=501, detail="Not Implemented")
+    result = await db.execute(
+        select(Group, func.count(GroupMember.id).label("member_count"))
+        .join(GroupMember, Group.id == GroupMember.group_id)
+        .where(GroupMember.user_id == current_user.id)
+        .group_by(Group.id)
+    )
+    rows = result.all()
+    return [
+        GroupResponse(
+            id=row.Group.id,
+            name=row.Group.name,
+            invite_code=row.Group.invite_code,
+            member_count=row.member_count,
+            is_owner=row.Group.created_by == current_user.id,
+        )
+        for row in rows
+    ]
 
 
 @router.get("/by-code/{invite_code}", response_model=GroupPreviewResponse)

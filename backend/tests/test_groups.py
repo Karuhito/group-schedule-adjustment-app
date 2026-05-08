@@ -28,3 +28,47 @@ async def test_create_group(client, test_user):
 async def test_create_group_unauthenticated(client):
     response = await client.post("/groups", json={"name": "テスト"})
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_list_groups_empty(client, test_user):
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    response = await client.get("/groups")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+@pytest.mark.asyncio
+async def test_list_groups(client, test_user):
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    await client.post("/groups", json={"name": "グループA"})
+    await client.post("/groups", json={"name": "グループB"})
+    response = await client.get("/groups")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    names = {g["name"] for g in data}
+    assert names == {"グループA", "グループB"}
+    for g in data:
+        assert g["is_owner"] is True
+        assert g["member_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_groups_only_mine(client, test_user, other_user):
+    """自分が参加していないグループは一覧に含まれないこと"""
+    # test_user がグループを作成
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    await client.post("/groups", json={"name": "オーナーのグループ"})
+
+    # other_user がグループを作成
+    client.cookies.set("access_token", _make_jwt(str(other_user.id)))
+    await client.post("/groups", json={"name": "他人のグループ"})
+
+    # test_user の一覧は自分のグループのみ
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    response = await client.get("/groups")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["name"] == "オーナーのグループ"
