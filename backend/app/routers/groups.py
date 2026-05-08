@@ -33,7 +33,21 @@ async def create_group(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> GroupResponse:
-    raise HTTPException(status_code=501, detail="Not Implemented")
+    invite_code = await _generate_unique_invite_code(db)
+    group = Group(name=data.name, invite_code=invite_code, created_by=current_user.id)
+    db.add(group)
+    await db.flush()
+    member = GroupMember(group_id=group.id, user_id=current_user.id)
+    db.add(member)
+    await db.commit()
+    await db.refresh(group)
+    return GroupResponse(
+        id=group.id,
+        name=group.name,
+        invite_code=group.invite_code,
+        member_count=1,
+        is_owner=True,
+    )
 
 
 @router.get("", response_model=list[GroupResponse])
