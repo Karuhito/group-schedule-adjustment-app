@@ -180,3 +180,40 @@ async def test_list_members_group_not_found(client, test_user):
     client.cookies.set("access_token", _make_jwt(str(test_user.id)))
     response = await client.get(f"/groups/{uuid.uuid4()}/members")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_group(client, test_user):
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    create_r = await client.post("/groups", json={"name": "削除テスト"})
+    group_id = create_r.json()["id"]
+
+    response = await client.delete(f"/groups/{group_id}")
+    assert response.status_code == 204
+
+    # 削除後はグループ一覧に出ないこと
+    list_r = await client.get("/groups")
+    assert list_r.json() == []
+
+
+@pytest.mark.asyncio
+async def test_delete_group_not_owner(client, test_user, other_user):
+    """オーナー以外がグループを削除しようとすると 403 になること"""
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    create_r = await client.post("/groups", json={"name": "テスト"})
+    group_id = create_r.json()["id"]
+    invite_code = create_r.json()["invite_code"]
+
+    # other_user が参加してから削除を試みる
+    client.cookies.set("access_token", _make_jwt(str(other_user.id)))
+    await client.post(f"/groups/by-code/{invite_code}/join")
+    response = await client.delete(f"/groups/{group_id}")
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_delete_group_not_found(client, test_user):
+    import uuid
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    response = await client.delete(f"/groups/{uuid.uuid4()}")
+    assert response.status_code == 404

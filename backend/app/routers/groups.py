@@ -166,7 +166,16 @@ async def delete_group(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    raise HTTPException(status_code=501, detail="Not Implemented")
+    result = await db.execute(select(Group).where(Group.id == group_id))
+    group = result.scalar_one_or_none()
+    if not group:
+        raise HTTPException(status_code=404, detail="グループが見つかりません")
+    if group.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="グループの削除はオーナーのみ可能です")
+    await db.execute(delete(Schedule).where(Schedule.group_id == group_id))
+    await db.execute(delete(GroupMember).where(GroupMember.group_id == group_id))
+    await db.execute(delete(Group).where(Group.id == group_id))
+    await db.commit()
 
 
 @router.delete("/{group_id}/members/{user_id}", status_code=204)
