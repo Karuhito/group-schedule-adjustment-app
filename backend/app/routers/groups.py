@@ -97,7 +97,32 @@ async def join_group(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> GroupResponse:
-    raise HTTPException(status_code=501, detail="Not Implemented")
+    result = await db.execute(select(Group).where(Group.invite_code == invite_code))
+    group = result.scalar_one_or_none()
+    if not group:
+        raise HTTPException(status_code=404, detail="招待コードが見つかりません")
+    existing = await db.execute(
+        select(GroupMember).where(
+            GroupMember.group_id == group.id,
+            GroupMember.user_id == current_user.id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="既にこのグループのメンバーです")
+    member = GroupMember(group_id=group.id, user_id=current_user.id)
+    db.add(member)
+    await db.commit()
+    count_result = await db.execute(
+        select(func.count(GroupMember.id)).where(GroupMember.group_id == group.id)
+    )
+    member_count = count_result.scalar_one()
+    return GroupResponse(
+        id=group.id,
+        name=group.name,
+        invite_code=group.invite_code,
+        member_count=member_count,
+        is_owner=group.created_by == current_user.id,
+    )
 
 
 @router.get("/{group_id}/members", response_model=list[MemberResponse])

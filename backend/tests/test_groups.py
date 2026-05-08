@@ -93,3 +93,46 @@ async def test_preview_group_not_found(client, test_user):
     client.cookies.set("access_token", _make_jwt(str(test_user.id)))
     response = await client.get("/groups/by-code/notexist")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_join_group(client, test_user, other_user):
+    # オーナーがグループを作成
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    create_r = await client.post("/groups", json={"name": "参加テスト"})
+    assert create_r.status_code == 201
+    invite_code = create_r.json()["invite_code"]
+
+    # other_user として参加
+    client.cookies.set("access_token", _make_jwt(str(other_user.id)))
+    join_r = await client.post(f"/groups/by-code/{invite_code}/join")
+    assert join_r.status_code == 200
+    data = join_r.json()
+    assert data["member_count"] == 2
+    assert data["is_owner"] is False
+
+    # other_user の一覧にグループが表示されること
+    list_r = await client.get("/groups")
+    assert len(list_r.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_join_group_already_member(client, test_user, other_user):
+    """既にメンバーのグループに参加しようとすると 409 になること"""
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    create_r = await client.post("/groups", json={"name": "テスト"})
+    invite_code = create_r.json()["invite_code"]
+
+    client.cookies.set("access_token", _make_jwt(str(other_user.id)))
+    await client.post(f"/groups/by-code/{invite_code}/join")
+
+    # 2回目の参加は 409
+    join_again_r = await client.post(f"/groups/by-code/{invite_code}/join")
+    assert join_again_r.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_join_group_not_found(client, test_user):
+    client.cookies.set("access_token", _make_jwt(str(test_user.id)))
+    response = await client.post("/groups/by-code/notexist/join")
+    assert response.status_code == 404
