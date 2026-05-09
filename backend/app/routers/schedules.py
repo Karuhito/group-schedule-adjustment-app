@@ -59,4 +59,42 @@ async def get_schedules(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[MemberScheduleResponse]:
-    raise NotImplementedError
+    result = await db.execute(select(Group).where(Group.id == group_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="グループが見つかりません")
+    membership = await db.execute(
+        select(GroupMember).where(
+            GroupMember.group_id == group_id,
+            GroupMember.user_id == current_user.id,
+        )
+    )
+    if not membership.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail="グループのメンバーではありません")
+    now = datetime.now(timezone.utc)
+    schedules_result = await db.execute(
+        select(Schedule, User)
+        .join(User, Schedule.user_id == User.id)
+        .where(
+            Schedule.group_id == group_id,
+            Schedule.end_time >= now,
+        )
+    )
+    rows = schedules_result.all()
+    user_slots: dict[uuid_lib.UUID, tuple[User, list[ScheduleSlot]]] = {}
+    for row in rows:
+        schedule: Schedule = row.Schedule
+        user: User = row.User
+        if user.id not in user_slots:
+            user_slots[user.id] = (user, [])
+        user_slots[user.id][1].append(
+            ScheduleSlot(start_time=schedule.start_time, end_time=schedule.end_time)
+        )
+    return [
+        MemberScheduleResponse(
+            user_id=user.id,
+            username=user.username,
+            avatar_url=user.avatar_url,
+            slots=slots,
+        )
+        for user, slots in user_slots.values()
+    ]
