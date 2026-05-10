@@ -14,6 +14,7 @@ export function GroupDetailPage() {
 
   const [members, setMembers] = useState<Member[]>([])
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!groupId || !group) return
@@ -29,15 +30,23 @@ export function GroupDetailPage() {
 
   async function handleKick(userId: string) {
     if (!groupId) return
-    await api.del(`/groups/${groupId}/members/${userId}`)
-    setMembers((prev) => prev.filter((m) => m.user_id !== userId))
+    try {
+      await api.del(`/groups/${groupId}/members/${userId}`)
+      setMembers((prev) => prev.filter((m) => m.user_id !== userId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'メンバーの追い出しに失敗しました')
+    }
   }
 
   async function handleDeleteGroup() {
     if (!groupId) return
     if (!confirm('グループを削除しますか？この操作は取り消せません。')) return
-    await api.del(`/groups/${groupId}`)
-    navigate('/home')
+    try {
+      await api.del(`/groups/${groupId}`)
+      navigate('/home')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'グループの削除に失敗しました')
+    }
   }
 
   if (!group) {
@@ -46,6 +55,7 @@ export function GroupDetailPage() {
 
   return (
     <div>
+      {error && <p className="text-red-400 mb-4">{error}</p>}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-100">{group.name}</h1>
         <div className="mt-2 flex items-center gap-2">
