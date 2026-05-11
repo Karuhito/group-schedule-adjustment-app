@@ -30,6 +30,8 @@ jobs:
 
       - name: テスト実行
         run: npm test
+        env:
+          VITE_API_URL: http://localhost:8000
 
   backend:
     name: バックエンドテスト
