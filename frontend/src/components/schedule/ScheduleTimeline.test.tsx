@@ -133,4 +133,15 @@ describe('ScheduleTimeline', () => {
     render(<ScheduleTimeline memberSchedules={[alice, bob]} />)
     expect(screen.getByText('重複')).toBeInTheDocument()
   })
+
+  it('メンバーが存在するがスロットが全員0件のとき「まだスケジュールが登録されていません。」を表示する', () => {
+    const emptyMember: MemberSchedule = {
+      user_id: 'u3',
+      username: 'Carol',
+      avatar_url: null,
+      slots: [],
+    }
+    render(<ScheduleTimeline memberSchedules={[emptyMember]} />)
+    expect(screen.getByText('まだスケジュールが登録されていません。')).toBeInTheDocument()
+  })
 })
