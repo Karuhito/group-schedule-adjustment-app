@@ -39,7 +39,7 @@ export function MemberList({ members, isOwner, currentUserId, onKick }: MemberLi
               onClick={() => onKick(member.user_id)}
               className="rounded px-2 py-1 text-xs text-red-400 hover:bg-red-900/30"
             >
-              追い出し
+              キック
             </button>
           )}
         </li>

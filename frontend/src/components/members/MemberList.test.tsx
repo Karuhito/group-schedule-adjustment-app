@@ -25,20 +25,20 @@ describe('MemberList', () => {
     expect(screen.getByText('オーナー')).toBeInTheDocument()
   })
 
-  it('isOwner=false のとき追い出しボタンを表示しない', () => {
+  it('isOwner=false のときキックボタンを表示しない', () => {
     render(
       <MemberList members={members} isOwner={false} currentUserId="u3" onKick={vi.fn()} />,
     )
-    expect(screen.queryByRole('button', { name: '追い出し' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'キック' })).not.toBeInTheDocument()
   })
 
-  it('isOwner=true のとき自分以外のメンバーに追い出しボタンを表示し、クリックで onKick を呼ぶ', async () => {
+  it('isOwner=true のとき自分以外のメンバーにキックボタンを表示し、クリックで onKick を呼ぶ', async () => {
     const user = userEvent.setup()
     const onKick = vi.fn()
     render(
       <MemberList members={members} isOwner={true} currentUserId="u1" onKick={onKick} />,
     )
-    const kickBtn = screen.getByRole('button', { name: '追い出し' })
+    const kickBtn = screen.getByRole('button', { name: 'キック' })
     await user.click(kickBtn)
     expect(onKick).toHaveBeenCalledWith('u2')
   })

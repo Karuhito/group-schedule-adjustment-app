@@ -82,14 +82,14 @@ describe('GroupDetailPage', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'グループを削除' })).not.toBeInTheDocument())
   })
 
-  it('追い出しボタンクリックで DELETE /groups/:groupId/members/:userId を呼ぶ', async () => {
+  it('キックボタンクリックで DELETE /groups/:groupId/members/:userId を呼ぶ', async () => {
     const user = userEvent.setup()
     vi.mocked(api.get).mockResolvedValueOnce(members)
     vi.mocked(api.del).mockResolvedValueOnce(undefined)
     renderWithState(ownerGroup)
 
     await waitFor(() => expect(screen.getByText('Bob')).toBeInTheDocument())
-    await user.click(screen.getByRole('button', { name: '追い出し' }))
+    await user.click(screen.getByRole('button', { name: 'キック' }))
 
     expect(vi.mocked(api.del)).toHaveBeenCalledWith('/groups/g1/members/u2')
     await waitFor(() => expect(screen.queryByText('Bob')).not.toBeInTheDocument())
