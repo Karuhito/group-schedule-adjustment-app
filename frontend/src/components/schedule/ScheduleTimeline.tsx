@@ -53,9 +53,10 @@ export function computeOverlap(
   const result: TimeInterval[] = []
   let runStart: number | null = null
   for (let i = 0; i <= totalMinutes; i++) {
-    if (combined[i] && runStart === null) {
+    const isActive = i < totalMinutes && combined[i]
+    if (isActive && runStart === null) {
       runStart = i
-    } else if (!combined[i] && runStart !== null) {
+    } else if (!isActive && runStart !== null) {
       result.push({
         start: new Date(minTime + runStart * 60000),
         end: new Date(minTime + i * 60000),
@@ -78,10 +79,10 @@ export function buildDateGroups(memberSchedules: MemberSchedule[]): DateGroup[] 
     for (const slot of member.slots) {
       const start = new Date(slot.start_time)
       const end = new Date(slot.end_time)
-      // UTCの年月日を使ってグループキーを生成する
-      const y = start.getUTCFullYear()
-      const m = String(start.getUTCMonth() + 1).padStart(2, '0')
-      const d = String(start.getUTCDate()).padStart(2, '0')
+      // ローカル時刻（JST）の年月日を使ってグループキーを生成する
+      const y = start.getFullYear()
+      const m = String(start.getMonth() + 1).padStart(2, '0')
+      const d = String(start.getDate()).padStart(2, '0')
       const dateKey = `${y}-${m}-${d}`
 
       if (!byDate.has(dateKey)) byDate.set(dateKey, new Map())
@@ -98,10 +99,9 @@ export function buildDateGroups(memberSchedules: MemberSchedule[]): DateGroup[] 
       const allSlots = memberSlots.flatMap((m) => m.slots)
       const minTime = Math.min(...allSlots.map((s) => s.start.getTime()))
       const maxTime = Math.max(...allSlots.map((s) => s.end.getTime()))
-      // 日付ラベルを日本語形式で生成する（UTCの年月日を使用）
+      // 日付ラベルを日本語形式で生成する（ローカル時刻の年月日を使用）
       const [year, month, day] = dateKey.split('-').map(Number)
-      const label = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('ja-JP', {
-        timeZone: 'UTC',
+      const label = new Date(year, month - 1, day).toLocaleDateString('ja-JP', {
         month: 'long',
         day: 'numeric',
         weekday: 'short',
