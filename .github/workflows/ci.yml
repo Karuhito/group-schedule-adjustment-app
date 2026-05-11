@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  frontend:
+    name: フロントエンドテスト
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 依存関係インストール
+        run: npm ci
+
+      - name: テスト実行
+        run: npm test
+
+  backend:
+    name: バックエンドテスト
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: uv インストール
+        uses: astral-sh/setup-uv@v3
+
+      - name: 依存関係インストール
+        run: uv sync --dev
+
+      - name: テスト実行
+        run: uv run pytest
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./test.db
+          DISCORD_CLIENT_ID: dummy_client_id
+          DISCORD_CLIENT_SECRET: dummy_client_secret
+          DISCORD_REDIRECT_URI: http://localhost:8000/auth/discord/callback
+          JWT_SECRET: dummy_jwt_secret_for_ci
+          FRONTEND_URL: http://localhost:5173
