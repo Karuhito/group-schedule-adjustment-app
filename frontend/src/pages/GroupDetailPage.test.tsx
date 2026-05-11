@@ -51,6 +51,7 @@ describe('GroupDetailPage', () => {
     })
     vi.mocked(api.get).mockReset()
     vi.mocked(api.del).mockReset()
+    vi.mocked(api.put).mockReset()
   })
 
   it('グループ名と招待コードを表示する', async () => {
@@ -97,5 +98,24 @@ describe('GroupDetailPage', () => {
   it('state が null のときエラーメッセージを表示する', () => {
     renderWithState(null)
     expect(screen.getByText('グループ情報がありません。')).toBeInTheDocument()
+  })
+
+  it('メンバータブとスケジュールタブのボタンが表示される', async () => {
+    vi.mocked(api.get).mockResolvedValueOnce(members)
+    renderWithState(ownerGroup)
+    expect(screen.getByRole('button', { name: 'メンバー' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'スケジュール' })).toBeInTheDocument()
+  })
+
+  it('スケジュールタブに切り替えると GET /groups/:id/schedules を呼ぶ', async () => {
+    const user = userEvent.setup()
+    vi.mocked(api.get).mockResolvedValueOnce(members)   // members call
+    vi.mocked(api.get).mockResolvedValueOnce([])         // schedules call
+    vi.mocked(api.put).mockResolvedValue(undefined)
+    renderWithState(ownerGroup)
+    await user.click(screen.getByRole('button', { name: 'スケジュール' }))
+    await waitFor(() =>
+      expect(vi.mocked(api.get)).toHaveBeenCalledWith('/groups/g1/schedules'),
+    )
   })
 })

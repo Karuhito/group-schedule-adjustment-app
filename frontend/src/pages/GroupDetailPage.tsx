@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Group, Member } from '../types'
 import { MemberList } from '../components/members/MemberList'
+import { ScheduleTab } from '../components/schedule/ScheduleTab'
 import { useAuth } from '../hooks/useAuth'
 
 export function GroupDetailPage() {
@@ -15,6 +16,7 @@ export function GroupDetailPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState<'members' | 'schedule'>('members')
 
   useEffect(() => {
     if (!groupId || !group) return
@@ -71,25 +73,54 @@ export function GroupDetailPage() {
         <p className="mt-1 text-sm text-slate-400">{group.member_count} 人のメンバー</p>
       </div>
 
-      <div className="mb-4">
-        <h2 className="mb-3 text-lg font-semibold text-slate-200">メンバー</h2>
-        <MemberList
-          members={members}
-          isOwner={group.is_owner}
-          currentUserId={user?.id ?? ''}
-          onKick={handleKick}
-        />
+      <div className="mb-6 flex border-b border-slate-700">
+        <button
+          onClick={() => setActiveTab('members')}
+          className={`px-4 py-2 text-sm font-semibold ${
+            activeTab === 'members'
+              ? 'border-b-2 border-violet-500 text-violet-400'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          メンバー
+        </button>
+        <button
+          onClick={() => setActiveTab('schedule')}
+          className={`px-4 py-2 text-sm font-semibold ${
+            activeTab === 'schedule'
+              ? 'border-b-2 border-violet-500 text-violet-400'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          スケジュール
+        </button>
       </div>
 
-      {group.is_owner && (
-        <div className="mt-8">
-          <button
-            onClick={handleDeleteGroup}
-            className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
-          >
-            グループを削除
-          </button>
-        </div>
+      {activeTab === 'members' && (
+        <>
+          <div className="mb-4">
+            <MemberList
+              members={members}
+              isOwner={group.is_owner}
+              currentUserId={user?.id ?? ''}
+              onKick={handleKick}
+            />
+          </div>
+          {group.is_owner && (
+            <div className="mt-8">
+              <button
+                onClick={handleDeleteGroup}
+                className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
+              >
+                グループを削除
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'schedule' && groupId && (
+        <ScheduleTab groupId={groupId} />
       )}
     </div>
   )
