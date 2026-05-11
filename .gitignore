@@ -58,3 +58,6 @@ backend/alembic/__pycache__/
 backend/alembic/versions/__pycache__/
 
 .claude/settings.local.json
+
+# Superpowers ブレインストーミングセッション
+.superpowers/
