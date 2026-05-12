@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -25,8 +26,7 @@ def _build_discord_oauth_url() -> str:
         "response_type": "code",
         "scope": "identify",
     }
-    query = "&".join(f"{k}={v}" for k, v in params.items())
-    return f"https://discord.com/oauth2/authorize?{query}"
+    return f"https://discord.com/oauth2/authorize?{urlencode(params)}"
 
 
 def _create_jwt(user_id: str) -> str:
@@ -102,7 +102,7 @@ async def discord_callback(code: str, db: AsyncSession = Depends(get_db)):
         key="access_token",
         value=token,
         httponly=True,
-        samesite="lax",
+        samesite="none" if is_secure else "lax",
         secure=is_secure,
         max_age=604800,
     )
