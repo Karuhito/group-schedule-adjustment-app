@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://backend-marbled-mountain-3721.fly.dev/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
