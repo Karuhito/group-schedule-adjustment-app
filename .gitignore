@@ -61,3 +61,7 @@ backend/alembic/versions/__pycache__/
 
 # Superpowers ブレインストーミングセッション
 .superpowers/
+
+# omc設定
+.omc/
+!.omc/skills/

@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { Sidebar } from './Sidebar'
+import { BottomNav } from './BottomNav'
 
 export function AppShell() {
   const { user, loading } = useAuth()
@@ -20,9 +21,15 @@ export function AppShell() {
   return (
     <div className="flex h-screen bg-slate-900">
       <Sidebar />
-      <main className="flex-1 overflow-auto p-8">
-        <Outlet />
-      </main>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex items-center bg-slate-800 px-4 py-3 md:hidden">
+          <span className="text-lg font-bold text-violet-400">🗓 GroupSync</span>
+        </header>
+        <main className="flex-1 overflow-auto p-4 pb-20 md:p-8 md:pb-8">
+          <Outlet />
+        </main>
+        <BottomNav />
+      </div>
     </div>
   )
 }
