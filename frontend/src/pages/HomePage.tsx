@@ -34,7 +34,7 @@ export function HomePage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-100">グループ一覧</h1>
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
           <button
             onClick={() => setShowJoin(true)}
             className="rounded-lg border border-violet-600 px-4 py-2 text-sm text-violet-400 hover:bg-violet-900/30"

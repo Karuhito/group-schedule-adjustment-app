@@ -14,7 +14,7 @@ export function Sidebar() {
   const initial = user?.username.charAt(0).toUpperCase() ?? ''
 
   return (
-    <aside className="flex w-56 flex-col bg-slate-800 p-4">
+    <aside className="hidden w-56 flex-col bg-slate-800 p-4 md:flex">
       <div className="mb-8">
         <span className="text-lg font-bold text-violet-400">🗓 GroupSync</span>
       </div>
