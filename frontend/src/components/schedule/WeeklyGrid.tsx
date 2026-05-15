@@ -8,7 +8,7 @@ interface WeeklyGridProps {
   today: Date
 }
 
-const DAY_NAMES = ['月', '火', '水', '木', '金', '土', '日']
+const DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土']
 const TIME_SLOTS = getTimeSlots()
 
 export function WeeklyGrid({ weekDates, selectedKeys, onToggle, today }: WeeklyGridProps) {
@@ -46,7 +46,7 @@ export function WeeklyGrid({ weekDates, selectedKeys, onToggle, today }: WeeklyG
                     isToday ? 'text-violet-400' : 'text-slate-400'
                   }`}
                 >
-                  <div className={isToday ? 'font-bold' : ''}>{DAY_NAMES[i]}</div>
+                  <div className={isToday ? 'font-bold' : ''}>{DAY_NAMES[date.getDay()]}</div>
                   <div>{`${date.getMonth() + 1}/${date.getDate()}`}</div>
                 </th>
               )

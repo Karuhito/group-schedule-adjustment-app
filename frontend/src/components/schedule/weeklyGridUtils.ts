@@ -1,12 +1,9 @@
 import type { ScheduleSlot } from '../../types'
 
-// 月曜起点の7日分のDateを返す（ローカル時刻）
+// 基準日から6日後までの7日分のDateを返す（ローカル時刻）
 export function getWeekDates(reference: Date): Date[] {
-  const day = reference.getDay()
-  const offset = day === 0 ? -6 : 1 - day
-  const monday = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() + offset)
   return Array.from({ length: 7 }, (_, i) => {
-    return new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i)
+    return new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() + i)
   })
 }
 
