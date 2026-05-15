@@ -6,26 +6,26 @@ import {
 import type { ScheduleSlot } from '../../types'
 
 describe('getWeekDates', () => {
-  it('木曜日(2026-05-14)の週は月(5/11)〜日(5/17)の7日分を返す', () => {
+  it('2026-05-14(木)を基準にすると5/14〜5/20の7日分を返す', () => {
     const ref = new Date(2026, 4, 14) // 5月14日 木曜
     const dates = getWeekDates(ref)
     expect(dates).toHaveLength(7)
-    expect(dates[0].getDate()).toBe(11) // 月曜
-    expect(dates[6].getDate()).toBe(17) // 日曜
+    expect(dates[0].getDate()).toBe(14) // 基準日
+    expect(dates[6].getDate()).toBe(20) // 6日後
   })
-  it('日曜日(2026-05-17)も同じ週(5/11〜5/17)を返す', () => {
+  it('日曜日(2026-05-17)を基準にすると5/17〜5/23の7日分を返す', () => {
     const ref = new Date(2026, 4, 17) // 5月17日 日曜
     const dates = getWeekDates(ref)
-    expect(dates[0].getDate()).toBe(11)
-    expect(dates[6].getDate()).toBe(17)
+    expect(dates[0].getDate()).toBe(17)
+    expect(dates[6].getDate()).toBe(23)
   })
-  it('月跨ぎ: 2026-04-30(木)の週は 4/27〜5/3', () => {
+  it('月跨ぎ: 2026-04-30(木)を基準にすると 4/30〜5/6', () => {
     const ref = new Date(2026, 3, 30)
     const dates = getWeekDates(ref)
     expect(dates[0].getMonth()).toBe(3) // 4月
-    expect(dates[0].getDate()).toBe(27)
+    expect(dates[0].getDate()).toBe(30)
     expect(dates[6].getMonth()).toBe(4) // 5月
-    expect(dates[6].getDate()).toBe(3)
+    expect(dates[6].getDate()).toBe(6)
   })
 })
 

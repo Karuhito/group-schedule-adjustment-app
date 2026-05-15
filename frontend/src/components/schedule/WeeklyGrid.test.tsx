@@ -19,10 +19,11 @@ function renderGrid(selectedKeys = new Set<string>(), onToggle = vi.fn()) {
 }
 
 describe('WeeklyGrid', () => {
-  it('7列（月〜日）のヘッダーが表示される', () => {
+  it('7列のヘッダーが表示される（基準日の曜日から7日分）', () => {
     renderGrid()
-    expect(screen.getByText('月')).toBeInTheDocument()
-    expect(screen.getByText('日')).toBeInTheDocument()
+    // TODAY=5/14(木) → 木〜水の7日分
+    expect(screen.getByText('木')).toBeInTheDocument()
+    expect(screen.getByText('水')).toBeInTheDocument()
   })
 
   it('7×48 = 336個のセルボタンが存在する', () => {
@@ -31,13 +32,10 @@ describe('WeeklyGrid', () => {
     expect(cells.length).toBe(7 * 48)
   })
 
-  it('過去日（5/11、5/12、5/13）のセルはdisabledになる', () => {
+  it('グリッドの全セルが有効（基準日以降のみ表示されるためdisabledなし）', () => {
     renderGrid()
-    // 月曜(5/11)の最初のセルがdisabled
-    const mondayCells = screen.getAllByRole('button').filter(btn =>
-      btn.getAttribute('aria-label')?.includes('5月11日')
-    )
-    mondayCells.forEach(btn => expect(btn).toBeDisabled())
+    const cells = screen.getAllByRole('button')
+    cells.forEach(btn => expect(btn).not.toBeDisabled())
   })
 
   it('今日(5/14)のセルはdisabledでない', () => {
@@ -69,7 +67,7 @@ describe('WeeklyGrid', () => {
     expect(selectedCells.length).toBe(1)
   })
 
-  it('月跨ぎ週（4/27〜5/3）でも正しくレンダリングされる', () => {
+  it('月跨ぎ（4/30〜5/6）でも正しくレンダリングされる', () => {
     const crossMonthToday = new Date(2026, 3, 30)
     const crossWeekDates = getWeekDates(crossMonthToday)
     render(
