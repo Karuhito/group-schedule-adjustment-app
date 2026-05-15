@@ -84,8 +84,8 @@ describe('WeeklyGrid', () => {
   })
 
   it('当週外のスロットはセル選択に反映されない', () => {
-    // 当週外スロット（6/1）を与えても、selectedKeysが空なら選択なし
-    const keys = new Set<string>() // partitionSlotsByWeek済み想定
+    // 当週外キー（6/1）を含むSetを渡してもグリッドに選択は表示されない
+    const keys = new Set(['2026-06-01 14:00']) // 当週（5/11〜5/17）の外
     renderGrid(keys)
     const selectedCells = screen.getAllByRole('button').filter(btn =>
       btn.getAttribute('aria-pressed') === 'true'

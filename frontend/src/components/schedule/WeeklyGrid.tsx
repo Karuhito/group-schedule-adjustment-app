@@ -35,11 +35,12 @@ export function WeeklyGrid({ weekDates, selectedKeys, onToggle, today }: WeeklyG
       <table className="border-collapse" style={{ minWidth: `${7 * 44 + 48}px` }}>
         <thead className="sticky top-0 z-20 bg-slate-900">
           <tr>
-            <th className="sticky left-0 z-30 w-12 bg-slate-900" />
+            <th scope="col" className="sticky left-0 z-30 w-12 bg-slate-900" />
             {weekDates.map((date, i) => {
               const isToday = dateStrings[i] === todayDateStr
               return (
                 <th
+                  scope="col"
                   key={dateStrings[i]}
                   className={`min-w-[40px] px-1 py-2 text-center text-xs font-medium ${
                     isToday ? 'text-violet-400' : 'text-slate-400'
@@ -57,9 +58,12 @@ export function WeeklyGrid({ weekDates, selectedKeys, onToggle, today }: WeeklyG
             const showLabel = time.endsWith(':00')
             return (
               <tr key={time}>
-                <td className="sticky left-0 z-10 w-12 bg-slate-900 pr-1 text-right text-xs text-slate-500">
+                <th
+                  scope="row"
+                  className="sticky left-0 z-10 w-12 bg-slate-900 pr-1 text-right text-xs text-slate-500"
+                >
                   {showLabel ? time : ''}
-                </td>
+                </th>
                 {weekDates.map((date, i) => {
                   const past = isPastDate(date, today)
                   const cellKey = `${dateStrings[i]} ${time}`
