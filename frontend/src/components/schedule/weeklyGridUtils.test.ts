@@ -75,6 +75,17 @@ describe('keySetToSlots', () => {
     const slots = keySetToSlots(keys)
     expect(slots).toHaveLength(2)
   })
+  it('23:00〜23:30のセルはend_timeが当日の23:30+30min=翌日00:00になる', () => {
+    const keys = new Set(['2026-05-14 23:00', '2026-05-14 23:30'])
+    const slots = keySetToSlots(keys)
+    expect(slots).toHaveLength(1)
+    const start = new Date(slots[0].start_time)
+    const end = new Date(slots[0].end_time)
+    // start < end であること（逆転していない）
+    expect(start.getTime()).toBeLessThan(end.getTime())
+    expect(start.getHours()).toBe(23)
+    expect(start.getMinutes()).toBe(0)
+  })
 })
 
 describe('slotsToKeySet', () => {
@@ -98,6 +109,18 @@ describe('slotsToKeySet', () => {
     // 開始切り捨て(14:00)〜終了切り上げ(16:00) = 4キー
     expect(keys.has('2026-05-14 14:00')).toBe(true)
     expect(keys.has('2026-05-14 15:30')).toBe(true)
+  })
+  it('日跨ぎスロット（23:00〜01:00翌日）もキーを生成する', () => {
+    const slot: ScheduleSlot = {
+      start_time: new Date(2026, 4, 14, 23, 0).toISOString(),
+      end_time: new Date(2026, 4, 15, 1, 0).toISOString(),
+    }
+    const keys = slotsToKeySet([slot])
+    expect(keys.size).toBeGreaterThan(0)
+    expect(keys.has('2026-05-14 23:00')).toBe(true)
+    expect(keys.has('2026-05-14 23:30')).toBe(true)
+    expect(keys.has('2026-05-15 00:00')).toBe(true)
+    expect(keys.has('2026-05-15 00:30')).toBe(true)
   })
   it('往復同一性: 30分整列スロットのみ保証', () => {
     const slot: ScheduleSlot = {

@@ -29,28 +29,30 @@ export function getTimeSlots(): string[] {
 
 // "YYYY-MM-DD HH:mm" のキー集合 → 連続セルをマージした ScheduleSlot[]
 export function keySetToSlots(keys: Set<string>): ScheduleSlot[] {
-  // 日付ごとにグルーピング
-  const byDate = new Map<string, string[]>()
+  // 日付ごとに「分数」でグルーピング
+  const byDate = new Map<string, number[]>()
   for (const key of keys) {
     const [date, time] = key.split(' ')
+    const [h, m] = time.split(':').map(Number)
+    const minutes = h * 60 + m
     if (!byDate.has(date)) byDate.set(date, [])
-    byDate.get(date)!.push(time)
+    byDate.get(date)!.push(minutes)
   }
 
   const slots: ScheduleSlot[] = []
-  for (const [date, times] of byDate) {
-    times.sort()
+  for (const [date, minuteList] of byDate) {
+    minuteList.sort((a, b) => a - b)
     const [year, month, day] = date.split('-').map(Number)
-    let rangeStart = times[0]
-    let prevEnd = addMinutes(times[0], 30)
+    let rangeStart = minuteList[0]
+    let prevEnd = minuteList[0] + 30
 
-    for (let i = 1; i < times.length; i++) {
-      if (times[i] === prevEnd) {
-        prevEnd = addMinutes(times[i], 30)
+    for (let i = 1; i < minuteList.length; i++) {
+      if (minuteList[i] === prevEnd) {
+        prevEnd = minuteList[i] + 30
       } else {
         slots.push(makeSlot(year, month, day, rangeStart, prevEnd))
-        rangeStart = times[i]
-        prevEnd = addMinutes(times[i], 30)
+        rangeStart = minuteList[i]
+        prevEnd = minuteList[i] + 30
       }
     }
     slots.push(makeSlot(year, month, day, rangeStart, prevEnd))
@@ -58,20 +60,12 @@ export function keySetToSlots(keys: Set<string>): ScheduleSlot[] {
   return slots
 }
 
-function addMinutes(time: string, minutes: number): string {
-  const [h, m] = time.split(':').map(Number)
-  const total = h * 60 + m + minutes
-  const newH = Math.floor(total / 60) % 24
-  const newM = total % 60
-  return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`
-}
-
-function makeSlot(year: number, month: number, day: number, startTime: string, endTime: string): ScheduleSlot {
-  const [sh, sm] = startTime.split(':').map(Number)
-  const [eh, em] = endTime.split(':').map(Number)
+// 日の開始からの分数でスロットを構築（Dateコンストラクタが日跨ぎを自動処理）
+function makeSlot(year: number, month: number, day: number, startMinutes: number, endMinutes: number): ScheduleSlot {
+  const base = new Date(year, month - 1, day)
   return {
-    start_time: new Date(year, month - 1, day, sh, sm).toISOString(),
-    end_time: new Date(year, month - 1, day, eh, em).toISOString(),
+    start_time: new Date(base.getTime() + startMinutes * 60000).toISOString(),
+    end_time: new Date(base.getTime() + endMinutes * 60000).toISOString(),
   }
 }
 
@@ -84,12 +78,17 @@ export function slotsToKeySet(slots: ScheduleSlot[]): Set<string> {
     // 開始を30分単位に切り捨て
     const startMinutes = Math.floor((start.getHours() * 60 + start.getMinutes()) / 30) * 30
     // 終了を30分単位に切り上げ
-    const endMinutes = Math.ceil((end.getHours() * 60 + end.getMinutes()) / 30) * 30
+    let endMinutes = Math.ceil((end.getHours() * 60 + end.getMinutes()) / 30) * 30
+    // 日跨ぎ補正
+    if (endMinutes <= startMinutes) endMinutes += 24 * 60
 
-    const dateStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`
+    const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate())
     for (let m = startMinutes; m < endMinutes; m += 30) {
-      const h = Math.floor(m / 60)
-      const min = m % 60
+      const targetDate = new Date(startDate.getTime() + Math.floor(m / 60 / 24) * 86400000)
+      const minuteOfDay = m % (24 * 60)
+      const h = Math.floor(minuteOfDay / 60)
+      const min = minuteOfDay % 60
+      const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
       keys.add(`${dateStr} ${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`)
     }
   }
