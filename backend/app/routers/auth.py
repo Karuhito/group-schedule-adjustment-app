@@ -40,7 +40,14 @@ async def discord_login():
 
 
 @router.get("/discord/callback")
-async def discord_callback(code: str, db: AsyncSession = Depends(get_db)):
+async def discord_callback(
+    code: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    if error or not code:
+        return RedirectResponse(url=f"{settings.frontend_url}/login?auth_error=cancelled", status_code=302)
+
     async with httpx.AsyncClient() as http_client:
         token_response = await http_client.post(
             f"{DISCORD_API_BASE}/oauth2/token",
