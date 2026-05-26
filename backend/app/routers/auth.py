@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -13,6 +14,8 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.models import User
 from app.schemas.schemas import UserResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -53,9 +56,14 @@ async def discord_callback(code: str, db: AsyncSession = Depends(get_db)):
             },
         )
         if token_response.status_code != 200:
+            logger.error(
+                "Discord token exchange failed: status=%d body=%s",
+                token_response.status_code,
+                token_response.text,
+            )
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Discord トークン取得に失敗しました",
+                detail=f"Discord トークン取得に失敗しました: {token_response.text}",
             )
 
         discord_access_token = token_response.json()["access_token"]
