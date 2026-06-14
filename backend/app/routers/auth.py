@@ -1,9 +1,10 @@
 import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.responses import RedirectResponse
 from jose import jwt
 from sqlalchemy import select
@@ -20,14 +21,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 DISCORD_API_BASE = "https://discord.com/api/v10"
+STATE_COOKIE_MAX_AGE = 600  # 10分
 
 
-def _build_discord_oauth_url() -> str:
+def _build_discord_oauth_url(state: str) -> str:
     params = {
         "client_id": settings.discord_client_id,
         "redirect_uri": settings.discord_redirect_uri,
         "response_type": "code",
         "scope": "identify",
+        "state": state,
     }
     return f"https://discord.com/oauth2/authorize?{urlencode(params)}"
 
@@ -39,17 +42,33 @@ def _create_jwt(user_id: str) -> str:
 
 @router.get("/discord")
 async def discord_login():
-    return RedirectResponse(url=_build_discord_oauth_url(), status_code=302)
+    state = secrets.token_urlsafe(32)
+    is_secure = settings.app_env == "production"
+    response = RedirectResponse(url=_build_discord_oauth_url(state), status_code=302)
+    response.set_cookie(
+        key="oauth_state",
+        value=state,
+        httponly=True,
+        samesite="none" if is_secure else "lax",
+        secure=is_secure,
+        max_age=STATE_COOKIE_MAX_AGE,
+    )
+    return response
 
 
 @router.get("/discord/callback")
 async def discord_callback(
     code: str | None = None,
     error: str | None = None,
+    state: str | None = None,
+    oauth_state: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     if error or not code:
         return RedirectResponse(url=f"{settings.frontend_url}/login?auth_error=cancelled", status_code=302)
+
+    if not state or not oauth_state or not secrets.compare_digest(state, oauth_state):
+        return RedirectResponse(url=f"{settings.frontend_url}/login?auth_error=invalid_state", status_code=302)
 
     async with httpx.AsyncClient() as http_client:
         token_response = await http_client.post(
@@ -120,6 +139,12 @@ async def discord_callback(
         samesite="none" if is_secure else "lax",
         secure=is_secure,
         max_age=604800,
+    )
+    response.delete_cookie(
+        key="oauth_state",
+        httponly=True,
+        samesite="none" if is_secure else "lax",
+        secure=is_secure,
     )
     return response
 
