@@ -131,5 +131,11 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 @router.post("/logout")
 async def logout(response: Response, _: User = Depends(get_current_user)):
-    response.delete_cookie("access_token")
+    is_secure = settings.app_env == "production"
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite="none" if is_secure else "lax",
+        secure=is_secure,
+    )
     return {"message": "ログアウトしました"}

@@ -119,7 +119,7 @@ async def test_get_me_without_cookie_returns_401(client):
 
 @pytest.mark.asyncio
 async def test_logout_deletes_cookie(client, db_session):
-    """/auth/logout で Cookie が削除されること"""
+    """/auth/logout で Cookie が削除されること（属性が set_cookie と一致すること）"""
     user = User(discord_id="444333222", username="logoutuser", avatar_url=None)
     db_session.add(user)
     await db_session.commit()
@@ -131,3 +131,30 @@ async def test_logout_deletes_cookie(client, db_session):
     response = await client.post("/auth/logout")
 
     assert response.status_code == 200
+
+    set_cookie = response.headers.get("set-cookie", "")
+    # Cookie が削除用の空値 or max-age=0 で送られること
+    assert "access_token" in set_cookie
+    assert "httponly" in set_cookie.lower()
+    assert "samesite=lax" in set_cookie.lower()
+
+
+@pytest.mark.asyncio
+async def test_logout_then_me_returns_401(client, db_session):
+    """ログアウト後に /auth/me が 401 を返すこと"""
+    user = User(discord_id="555444333", username="logoutcheck", avatar_url=None)
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    token = _make_jwt(str(user.id))
+    client.cookies.set("access_token", token)
+
+    logout_response = await client.post("/auth/logout")
+    assert logout_response.status_code == 200
+
+    # Cookie を手動で削除してログアウト後の状態を再現
+    client.cookies.delete("access_token")
+
+    me_response = await client.get("/auth/me")
+    assert me_response.status_code == 401
