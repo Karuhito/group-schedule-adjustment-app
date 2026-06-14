@@ -12,9 +12,26 @@ def _make_jwt(user_id: str) -> str:
     return jwt.encode({"sub": user_id, "exp": expire}, settings.jwt_secret, algorithm="HS256")
 
 
+def _mock_discord_client(discord_id: str = "999888777", username: str = "newuser", avatar: str | None = "abcdef123") -> AsyncMock:
+    mock_token_response = MagicMock()
+    mock_token_response.status_code = 200
+    mock_token_response.json.return_value = {"access_token": "discord_access_token"}
+
+    mock_user_response = MagicMock()
+    mock_user_response.status_code = 200
+    mock_user_response.json.return_value = {"id": discord_id, "username": username, "avatar": avatar}
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    mock_client.post = AsyncMock(return_value=mock_token_response)
+    mock_client.get = AsyncMock(return_value=mock_user_response)
+    return mock_client
+
+
 @pytest.mark.asyncio
 async def test_discord_login_redirect(client):
-    """/auth/discord が Discord OAuth URL にリダイレクトすること"""
+    """/auth/discord が state 付きで Discord OAuth URL にリダイレクトし oauth_state Cookie をセットすること"""
     response = await client.get("/auth/discord", follow_redirects=False)
 
     assert response.status_code == 302
@@ -22,31 +39,21 @@ async def test_discord_login_redirect(client):
     assert "discord.com/oauth2/authorize" in location
     assert "client_id=" in location
     assert "scope=identify" in location
+    assert "state=" in location
+    assert "oauth_state" in response.cookies
 
 
 @pytest.mark.asyncio
 async def test_discord_callback_creates_user(client, db_session):
     """/auth/discord/callback で新規ユーザーが作成され、Cookie がセットされること"""
-    mock_token_response = MagicMock()
-    mock_token_response.status_code = 200
-    mock_token_response.json.return_value = {"access_token": "discord_access_token"}
+    state = "valid_state_value"
+    client.cookies.set("oauth_state", state)
 
-    mock_user_response = MagicMock()
-    mock_user_response.status_code = 200
-    mock_user_response.json.return_value = {
-        "id": "999888777",
-        "username": "newuser",
-        "avatar": "abcdef123",
-    }
-
-    mock_client = AsyncMock()
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
-    mock_client.post = AsyncMock(return_value=mock_token_response)
-    mock_client.get = AsyncMock(return_value=mock_user_response)
-
-    with patch("app.routers.auth.httpx.AsyncClient", return_value=mock_client):
-        response = await client.get("/auth/discord/callback?code=test_code", follow_redirects=False)
+    with patch("app.routers.auth.httpx.AsyncClient", return_value=_mock_discord_client()):
+        response = await client.get(
+            f"/auth/discord/callback?code=test_code&state={state}",
+            follow_redirects=False,
+        )
 
     assert response.status_code == 302
     assert response.headers["location"].endswith("/home")
@@ -62,32 +69,43 @@ async def test_discord_callback_upserts_existing_user(client, db_session):
     db_session.add(existing_user)
     await db_session.commit()
 
-    mock_token_response = MagicMock()
-    mock_token_response.status_code = 200
-    mock_token_response.json.return_value = {"access_token": "discord_access_token"}
+    state = "valid_state_value"
+    client.cookies.set("oauth_state", state)
 
-    mock_user_response = MagicMock()
-    mock_user_response.status_code = 200
-    mock_user_response.json.return_value = {
-        "id": "111222333",
-        "username": "newname",
-        "avatar": None,
-    }
-
-    mock_client = AsyncMock()
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
-    mock_client.post = AsyncMock(return_value=mock_token_response)
-    mock_client.get = AsyncMock(return_value=mock_user_response)
-
-    with patch("app.routers.auth.httpx.AsyncClient", return_value=mock_client):
-        response = await client.get("/auth/discord/callback?code=test_code", follow_redirects=False)
+    with patch("app.routers.auth.httpx.AsyncClient", return_value=_mock_discord_client(discord_id="111222333", username="newname", avatar=None)):
+        response = await client.get(
+            f"/auth/discord/callback?code=test_code&state={state}",
+            follow_redirects=False,
+        )
 
     assert response.status_code == 302
 
     result = await db_session.execute(select(User).where(User.discord_id == "111222333"))
     user = result.scalar_one()
     assert user.username == "newname"
+
+
+@pytest.mark.asyncio
+async def test_discord_callback_rejects_missing_state(client):
+    """/auth/discord/callback で state が欠落しているとき /login?auth_error=invalid_state にリダイレクトすること"""
+    response = await client.get("/auth/discord/callback?code=test_code", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert "auth_error=invalid_state" in response.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_discord_callback_rejects_invalid_state(client):
+    """/auth/discord/callback で state が不一致のとき /login?auth_error=invalid_state にリダイレクトすること"""
+    client.cookies.set("oauth_state", "correct_state")
+
+    response = await client.get(
+        "/auth/discord/callback?code=test_code&state=wrong_state",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert "auth_error=invalid_state" in response.headers["location"]
 
 
 @pytest.mark.asyncio
@@ -133,7 +151,6 @@ async def test_logout_deletes_cookie(client, db_session):
     assert response.status_code == 200
 
     set_cookie = response.headers.get("set-cookie", "")
-    # Cookie が削除用の空値 or max-age=0 で送られること
     assert "access_token" in set_cookie
     assert "httponly" in set_cookie.lower()
     assert "samesite=lax" in set_cookie.lower()
@@ -153,7 +170,6 @@ async def test_logout_then_me_returns_401(client, db_session):
     logout_response = await client.post("/auth/logout")
     assert logout_response.status_code == 200
 
-    # Cookie を手動で削除してログアウト後の状態を再現
     client.cookies.delete("access_token")
 
     me_response = await client.get("/auth/me")
