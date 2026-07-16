@@ -1,0 +1,22 @@
+name: Keep DB Alive
+
+# Supabase無料プランは7日間アクセスがないと一時停止するため、
+# 3日に1回 DBへ軽量クエリを投げてスリープを防ぐ。
+# scheduleは固定日にトリガーされ失敗しても前倒しされないため、
+# 1回失敗しても7日以内に次回が来るよう3日間隔にしている。
+on:
+  schedule:
+    # 毎月 1,4,7,...,28,31 日の UTC 3:00（JST 12:00）
+    - cron: '0 3 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    name: DBスリープ防止クエリ
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: DBへSELECT 1を実行
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: psql "$DATABASE_URL" -c 'SELECT 1;'
